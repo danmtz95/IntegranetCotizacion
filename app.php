@@ -48,7 +48,7 @@ class App
 		{
 				$__user		 = 'root';
 				$__password	 = 'asdf';
-				$__db		 = 'posco';
+				$__db		 = 'integranet_cotizacion';
 				$__host		 = '127.0.0.1';
 				$__port		 = '3306';
 				app::$image_directory = './user_images';
