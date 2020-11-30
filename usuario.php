@@ -47,6 +47,7 @@ class Service extends SuperRest
 		$total	= DBTable::getTotalRows();
 		return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
 	}
+
 	function post()
 	{
 		$this->setAllowHeader();
@@ -75,6 +76,9 @@ class Service extends SuperRest
 			DBTable::rollback();
 			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
 		}
+	}
+	function algo(){
+		
 	}
 
 	function put()
