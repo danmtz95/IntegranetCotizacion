@@ -23,27 +23,27 @@ class Service extends SuperRest
 
 		if( isset( $_GET['id'] ) && !empty( $_GET['id'] ) )
 		{
-			$cliente = cliente::get( $_GET['id']  );
+			$proveedor = proveedor::get( $_GET['id']  );
 
-			if( $cliente )
+			if( $proveedor )
 			{
-				return $this->sendStatus( 200 )->json( $cliente->toArray() );
+				return $this->sendStatus( 200 )->json( $proveedor->toArray() );
 			}
 			return $this->sendStatus( 404 )->json(array('error'=>'The element wasn\'t found'));
 		}
 
 
-		$constraints = $this->getAllConstraints( cliente::getAllProperties() );
+		$constraints = $this->getAllConstraints( proveedor::getAllProperties() );
 
 		$constraints_str = count( $constraints ) > 0 ? join(' AND ',$constraints ) : '1';
 		$pagination	= $this->getPagination();
 
-		$sql_clientes	= 'SELECT SQL_CALC_FOUND_ROWS cliente.*
-			FROM `cliente`
+		$sql_proveedores	= 'SELECT SQL_CALC_FOUND_ROWS proveedor.*
+			FROM `proveedor`
 			WHERE '.$constraints_str.'
 			LIMIT '.$pagination->limit.'
 			OFFSET '.$pagination->offset;
-		$info	= DBTable::getArrayFromQuery( $sql_clientes );
+		$info	= DBTable::getArrayFromQuery( $sql_proveedores );
 		$total	= DBTable::getTotalRows();
 		return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
 	}
@@ -115,18 +115,18 @@ class Service extends SuperRest
 
 		foreach($array as $params )
 		{
-			$properties = cliente::getAllPropertiesExcept('tiempo_creacion','tiempo_actualizacion','id');
+			$properties = proveedor::getAllPropertiesExcept('tiempo_creacion','tiempo_actualizacion','id');
 
-			$cliente = new cliente();
-			$cliente->assignFromArray( $params, $properties );
-			$cliente->unsetEmptyValues( DBTable::UNSET_BLANKS );
+			$proveedor = new proveedor();
+			$proveedor->assignFromArray( $params, $properties );
+			$proveedor->unsetEmptyValues( DBTable::UNSET_BLANKS );
 
-			if( !$cliente->insert() )
+			if( !$proveedor->insert() )
 			{
-					throw new ValidationException('An error Ocurred please try again later',$cliente->_conn->error );
+					throw new ValidationException('An error Ocurred please try again later',$proveedor->_conn->error );
 			}
 
-			$results [] = $cliente->toArray();
+			$results [] = $proveedor->toArray();
 		}
 
 		return $results;
@@ -139,27 +139,27 @@ class Service extends SuperRest
 
 		foreach($array as $index=>$params )
 		{
-			$properties = cliente::getAllPropertiesExcept('tiempo_creacion','tiempo_actualizacion');
+			$properties = proveedor::getAllPropertiesExcept('tiempo_creacion','tiempo_actualizacion');
 
-			$cliente = cliente::createFromArray( $params );
+			$proveedor = proveedor::createFromArray( $params );
 
 			if( $insert_with_ids )
 			{
-				if( !empty( $cliente->id ) )
+				if( !empty( $proveedor->id ) )
 				{
-					if( $cliente->load(true) )
+					if( $proveedor->load(true) )
 					{
-						$cliente->assignFromArray( $params, $properties );
-						$cliente->unsetEmptyValues( DBTable::UNSET_BLANKS );
+						$proveedor->assignFromArray( $params, $properties );
+						$proveedor->unsetEmptyValues( DBTable::UNSET_BLANKS );
 
-						if( !$cliente->update($properties) )
+						if( !$proveedor->update($properties) )
 						{
-							throw new ValidationException('It fails to update element #'.$cliente->id);
+							throw new ValidationException('It fails to update element #'.$proveedor->id);
 						}
 					}
 					else
 					{
-						if( !$cliente->insertDb() )
+						if( !$proveedor->insertDb() )
 						{
 							throw new ValidationException('It fails to update element at index #'.$index);
 						}
@@ -168,31 +168,31 @@ class Service extends SuperRest
 			}
 			else
 			{
-				if( !empty( $cliente->id ) )
+				if( !empty( $proveedor->id ) )
 				{
-					$cliente->setWhereString( true );
+					$proveedor->setWhereString( true );
 
-					$properties = cliente::getAllPropertiesExcept('id','tiempo_creacion','tiempo_actualizacion');
-					$cliente->unsetEmptyValues( DBTable::UNSET_BLANKS );
+					$properties = proveedor::getAllPropertiesExcept('id','tiempo_creacion','tiempo_actualizacion');
+					$proveedor->unsetEmptyValues( DBTable::UNSET_BLANKS );
 
-					if( !$cliente->updateDb( $properties ) )
+					if( !$proveedor->updateDb( $properties ) )
 					{
-						throw new ValidationException('An error Ocurred please try again later',$cliente->_conn->error );
+						throw new ValidationException('An error Ocurred please try again later',$proveedor->_conn->error );
 					}
 
-					$cliente->load(true);
+					$proveedor->load(true);
 
-					$results [] = $cliente->toArray();
+					$results [] = $proveedor->toArray();
 				}
 				else
 				{
-					$cliente->unsetEmptyValues( DBTable::UNSET_BLANKS );
-					if( !$cliente->insert() )
+					$proveedor->unsetEmptyValues( DBTable::UNSET_BLANKS );
+					if( !$proveedor->insert() )
 					{
-						throw new ValidationException('An error Ocurred please try again later',$cliente->_conn->error );
+						throw new ValidationException('An error Ocurred please try again later',$proveedor->_conn->error );
 					}
 
-					$results [] = $cliente->toArray();
+					$results [] = $proveedor->toArray();
 				}
 			}
 		}
@@ -214,7 +214,7 @@ class Service extends SuperRest
 
 			if( empty( $_GET['id'] ) )
 			{
-				$cliente = new cliente();
+				$proveedor = new cliente();
 				$cliente->id = $_GET['id'];
 
 				if( !$cliente->load(true) )
