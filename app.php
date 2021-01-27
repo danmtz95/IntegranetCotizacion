@@ -1,6 +1,6 @@
 <?php
 
-namespace POSCO;
+namespace INTEGRANET_COTIZACION;
 
 include_once( __DIR__.'/akou/src/LoggableException.php' );
 include_once( __DIR__.'/akou/src/Utils.php' );
@@ -89,7 +89,7 @@ class App
 
 
 		DBTable::$connection							= $mysqli;
-		DBTable::importDbSchema('POSCO');
+		DBTable::importDbSchema('INTEGRANET_COTIZACION');
 
 
 
