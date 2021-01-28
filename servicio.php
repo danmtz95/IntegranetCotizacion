@@ -1,5 +1,5 @@
 <?php
-namespace INTEGRANET_COTIZACION;
+namespace APP;
 
 include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');

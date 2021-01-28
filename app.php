@@ -1,6 +1,6 @@
 <?php
 
-namespace INTEGRANET_COTIZACION;
+namespace APP;
 
 include_once( __DIR__.'/akou/src/LoggableException.php' );
 include_once( __DIR__.'/akou/src/Utils.php' );
@@ -66,12 +66,12 @@ class App
 
 				$__user          = 'dbuser';
 				$__password      = 'Soluciones01';
-                $__db            = 'posco';
+                $__db            = 'integranet_cotizacion';
                 $__host          = '127.0.0.1';
                 $__port          = '3306';
 
-				app::$image_directory = '/var/www/html/Posco/api/user_images';
-				app::$attachment_directory = '/var/www/html/Posco/api/user_files';
+				app::$image_directory = '/var/www/html/Integranet_Cotizacion/api/user_images';
+				app::$attachment_directory = '/var/www/html/Integranet_Cotizacion/api/user_files';
 		}
 
 		$mysqli = new \mysqli($__host, $__user, $__password, $__db, $__port );
@@ -89,7 +89,7 @@ class App
 
 
 		DBTable::$connection							= $mysqli;
-		DBTable::importDbSchema('INTEGRANET_COTIZACION');
+		DBTable::importDbSchema('APP');
 
 
 
