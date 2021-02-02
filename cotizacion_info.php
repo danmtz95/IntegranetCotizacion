@@ -1,13 +1,17 @@
 <?php
-
 namespace APP;
 
-include_once(__DIR__ . '/app.php');
+include_once( __DIR__.'/app.php' );
 include_once( __DIR__.'/akou/src/ArrayUtils.php');
+include_once( __DIR__.'/SuperRest.php');
 
 use \akou\Utils;
 use \akou\DBTable;
+use \akou\RestController;
 use \akou\ArrayUtils;
+use \akou\ValidationException;
+use \akou\LoggableException;
+use \akou\SystemException;
 
 class Service extends SuperRest
 {
@@ -17,265 +21,225 @@ class Service extends SuperRest
 		App::connect();
 		$this->setAllowHeader();
 
-		$usuario = app::getUserFromSession();
+		return $this->genericGet("cotizacion");
+	}
 
-		if ($usuario == null) {
-			return $this->sendStatus(401)->json(array('error' => 'Por favor inicie sesion'));
-		}
+	function getInfo($cotizacion_array)
+	{
+		$cotizacion_ids 	= ArrayUtils::getItemsProperty($cotizacion_array,'id', true);
+		// $cotizacion_detalle_array	= cotizacion_detalle::searchGroupByIndex(array('id_cotizacion'=>$cotizacion_ids),false,'id_cotizacion');
+		$cotizacion_detalles_array	= cotizacion_detalle::search(array('id_cotizacion'=>$cotizacion_ids),false,'id');
+		$servicios_ids = ArrayUtils::getItemsProperty($cotizacion_detalles_array,'id_servicio',true);
+		$servicios_array = servicio::search(array('id'=>$servicios_ids),false,'id');
+		$servicio_array = arrayUtils::groupByIndex($servicios_array,'id');
+		$cotizacion_detalle_array = arrayUtils::groupByIndex($cotizacion_detalles_array,'id_cotizacion');
+		error_log(print_r($servicios_array,true));
+		// error_log(print_r($cotizacion_detalle_array,true));
+		// error_log(print_r($cotizacion_detalles_array,true));
 
-		if (isset($_GET['id']) && !empty($_GET['id'])) {
-			$servicio = servicio::get($_GET['id']);
 
-			if ($servicio) {
-				return $this->sendStatus(200)->json($servicio->toArray());
+		// foreach($cotizacion_detalle_array as $index => $cd)
+		// {
+		// 	$tmp_ids = ArrayUtils::getItemsProperty($cd,'id_cotizacion', true);
+		// 	$detalles_ids = array_merge( $tmp_ids, $detalles_ids );
+		// }
+
+		// $items_array = item::search(array('id'=>$items_ids),false, 'id');
+		// $category_array	= category::search(array('id'=>array_keys( $items_array )), false, 'id');
+
+		$result = array();
+
+		foreach($cotizacion_array as $cotizacion)
+		{
+			$cotizacion_detalles = isset( $cotizacion_detalle_array[ $cotizacion['id'] ] )
+				? $cotizacion_detalle_array[ $cotizacion['id'] ]
+				: array();
+
+
+			$detalles_info = array();
+
+			foreach($cotizacion_detalles as $cd)
+			{
+				$this->debug('cd',$cd);
+				$detalle = $cotizacion_detalles_array[ $cd['id'] ];
+				$servicio = $servicios_array[$cd['id_servicio']];
+				// $category = $category_array[ $item['category_id'] ];
+
+				$detalles_info[]= array(
+					'servicio'=>$servicio,
+					'cotizacion_detalle'=> $detalle,
+				);
 			}
-			return $this->sendStatus(404)->json(array('error' => 'The element wasn\'t found'));
-		}
 
-		$recursos = $this->getRecursos(array($servicio->id));
-
-		return $this->sendStatus(200)->json(
-				array(
-					'servicio'	=> $servicio->toArray(), 'recursos'	=> $recursos[$servicio->id] ?: array()
-				)
-			);
-
-
-		$contraints = array();
-
-		if (empty($_GET['fecha_inicio'])) {
-			$constraints[] = 'inicio >= "' . DBTable::escape($_GET['fecha_inicio']) . '"';
-		}
-
-		if (empty($_GET['fecha_fin'])) {
-			$constraints[] = 'inicio <= "' . DBTable::escape($_GET['fecha_inicio']) . '"';
-		}
-
-		$contraints_igualdad = array('id_sucursal', 'tipo', 'codigo');
-
-		foreach ($contraints_igualdad as $keyword) {
-			if (!empty($_GET[$keyword]))
-				$constraints[] = $keyword . '= "' . DBTable::escape($_GET[$keyword]) . '"';
-		}
-
-		$paginacion = $this->getPagination();
-
-		$sql = 'SELECT SQL_CALC_FOUND_ROWS servicio.* FROM servicio LIMIT ' . $paginacion->limit . ' OFFSET ' . $paginacion->offset;
-
-		$servicios	= DBTable::getArrayFromQuery($sql);
-		$total		= DBTable::getTotalRows();
-
-		$ids 		= ArrayUtils::itemsPropertyToArray($servicios, 'id');
-
-		$recursos	= $this->getRecursos($ids);
-		$servicios_data  = array();
-
-		foreach ($servicios as $serv) {
-			$servicios_data[] = array(
-				'servicio' => $serv,
-				'recursos' => $recursos[$serv['id']] ?: array()
+			$result[] = array(
+				// ''=> $detalles_info,
+				'cotizacion'=>$cotizacion,
+				'cotizacion_detalles'=> $detalles_info
 			);
 		}
+		$this->debug('info', $result );
 
-		$response = array(
-			'total'		=> $total, 'datos'	=> $servicios_data
-		);
-
-		return $this->sendStatus(200)->json($response);
+		return $result;
 	}
 
 	function post()
 	{
 		$this->setAllowHeader();
-		App::connect();
-
 		$params = $this->getMethodParams();
-		$usuario = app::getUserFromSession();
+		app::connect();
+		DBTable::autocommit(false );
 
-		DBTable::autocommit(FALSE);
+		try
+		{
+			$user = app::getUserFromSession();
+			if( $user == null )
+				throw new ValidationException('Please login');
 
-		if ($usuario == null) {
-			return $this->sendStatus(401)->json(array('error' => 'Por favor inicie sesion'));
+			$is_assoc	= $this->isAssociativeArray( $params );
+			$result		= $this->batchInsert( $is_assoc	? array($params) : $params );
+			DBTable::commit();
+			return $this->sendStatus( 200 )->json( $is_assoc ? $result[0] : $result );
 		}
-
-		$servicio = new servicio();
-		$servicio->assignFromArrayExcluding($params['servicio'], 'id', 'fecha_creacion', 'fecha_actualizacion');
-		$servicio->id_organizacion = $usuario->id_organizacion;
-		$servicio->id_sucursal = $usuario->id_sucursal;
-		$servicio->unsetEmptyValues(DBTable::UNSET_ALL);
-
-		if (!$servicio->insertDb()) {
+		catch(LoggableException $e)
+		{
 			DBTable::rollback();
-			return $this->sendStatus(400)->json(array('error' => 'Ocurrion un error por favor intente de nuevo', 'dev' => $servicio->_conn->error, 'sql' => $servicio->getLastQuery()));
+			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-
-		// $id_servicios = ArrayUtils::itemsPropertyToArray( $params['recursos'],'id_servicio_secundario' );
-		// $servicios = array();
-
-		// if( count( $params['recursos'] ) )
-		// {
-		// 	$sql_servicios	= 'SELECT * FROM servicio WHERE id IN('.DBTable::escapeArrayValues( $id_servicios ).')';
-		// 	$servicios		= servicio::getArrayFromQuery( $sql_servicios,'id' );
-		// }
-
-		$recursos = array();
-		foreach ($params['recursos'] as $serv_rec) {
-			if (empty($serv_rec['servicio_recurso']['id_servicio_secundario'])) {
-				DBTable::rollback();
-				return $this->sendStatus(404)->json(array('error' => 'el servicio "' . $serv_rec['servicio_recurso']['id_servicio_secundario'] . '" no existe'));
-			}
-			$servicio_secundario = servicio::get($serv_rec['servicio_recurso']['id_servicio_secundario']);
-
-			if (empty($servicio_secundario)) {
-				DBTable::rollback();
-				return $this->sendStatus(404)->json(array('error' => 'el servicio "' . $servicio_secundario->id . '" no exite'));
-			}
-			$servicio_recurso = new servicio_recurso();
-			$servicio_recurso->id_servicio_primario = $servicio->id;
-			$servicio_recurso->id_servicio_secundario = $servicio_secundario->id;
-			$servicio_recurso->cantidad = $serv_rec['servicio_recurso']['cantidad'];
-
-			if (!$servicio_recurso->insertDb()) {
-				DBTable::rollback();
-				return $this->sendStatus(500)->json(array('error' => 'Ocurrio un error por favor intente mas tarde', 'dev' => $servicio_recurso->_conn->error, 'sql' => $servicio_recurso->getLastQuery()));
-			}
-
-			$servicios_recurso[] = array('servicio_recurso' => $servicio_recurso->toArray(), 'servicio' => $servicio->toArray(), 'servicio_secundario' => $servicio_secundario->toArray());
+		catch(Exception $e)
+		{
+			DBTable::rollback();
+			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
 		}
-
-		DBTable::commit();
-		return $this->sendStatus(200)->json(array('servicio' => $servicio->toArray()));
 	}
 
 	function put()
 	{
-		session_start();
-		App::connect();
-		DBTable::autocommit(FALSE);
+		$this->setAllowHeader();
+		$params = $this->getMethodParams();
+		app::connect();
+		DBTable::autocommit(false );
 
-		$usuario = app::getUserFromSession();
+		try
+		{
+			$user = app::getUserFromSession();
+			if( $user == null )
+				throw new ValidationException('Please login');
 
-		if ($usuario == null) {
-			return $this->sendStatus(401)->json(array('error' => 'Por favor inicie sesion'));
+			$is_assoc	= $this->isAssociativeArray( $params );
+			$result		= $this->batchUpdate( $is_assoc	? array($params) : $params );
+			DBTable::commit();
+			return $this->sendStatus( 200 )->json( $is_assoc ? $result[0] : $result );
 		}
-
-		$params		= $this->getMethodParams();
-
-		if (empty($params['servicio']) || empty($params['servicio']['id'])) {
-			return $this->sendStatus(401)->json(array('error' => 'El servicio no puede estar vacio', 'params' => $params));
-		}
-
-		$servicio	= new servicio();
-
-		$servicio->id = $params['servicio']['id'];
-
-		if (!$servicio->load(true)) {
-			return $this->sendStatus(404)->json($servicio->toArray());
-		}
-
-		$servicio->assignFromArrayExcluding($params['servicio'], 'tiempo_creacion', 'tiempo_actualizacion', 'tipo');
-
-		$servicio->unsetEmptyValues();
-
-		if (!$servicio->updateDb()) {
+		catch(LoggableException $e)
+		{
 			DBTable::rollback();
-			return $this->sendStatus(404)->json(array('error' => 'Ocurrion un error por favor intentar mas tarde', 'dev' => $servicio->_conn->error, 'sql' => $servicio->getLastQuery()));
+			return $this->sendStatus( $e->code )->json(array("error"=>$e->getMessage()));
 		}
-
-		//$id_servicios	= array();
-		//foreach( $params['recursos'] as $sr )
-		//{
-		//	error_log('HERE UNO'.print_r($sr,true));
-		//	$id_servicios[] = $sr['recurso']['id_servicio_secundario'];
-		//}
-
-		////error_log( print_r( $id_servicios ) );
-
-		//$servicios		= array();
-
-		//if( !empty( $id_servicios ) )
-		//{
-		//	$sql_servicios	= 'SELECT * FROM servicio WHERE id IN('.DBTable::escapeArrayValues( $id_servicios ).')';
-		//	error_log( print_r( $id_servicios,true ).' '.$sql_servicios );
-		//	$servicios		= servicio::getArrayFromQuery( $sql_servicios,'id' );
-		//}
-
-
-		foreach ($params['recursos'] as $serv_rec) {
-			//if(empty( $servicios[ $serv_rec['recurso']['id_servicio_secundario'] ] ) )
-			//{
-			//	DBTable::rollback();
-			//	return $this->sendStatus( 404 )->json(array('error'=>'el servicio "'.$serv_rec['recurso']['id_servicio_secundario'].'" no exite','params'=>$params));
-			//}
-
-			$sr = new servicio_recurso();
-			$sr->id_servicio_primario	= $servicio->id;
-			$sr->id_servicio_secundario	= $serv_rec['servicio_recurso']['id_servicio_secundario'];
-			$sr->setWhereString();
-
-			$ssec = new servicio();
-			$ssec->id = $sr->id_servicio_secundario;
-
-			if (!$ssec->load()) {
-				//print_r( $serv_rec );
-				DBTable::rollback();
-				return $this->sendStatus(404)->json(array('error' => 'el servicio "' . $ssec->id . '" no exite', 'params' => $params));
-			}
-
-			if ($sr->load(false, true)) {
-				$sr->assignFromArrayExcluding($serv_rec['servicio_recurso'], 'tiempo_creacion', 'id');
-
-				if (!$sr->updateDb('cantidad', 'status')) {
-					DBTable::rollback();
-					return $this->sendStatus(404)->json(array('error' => 'Ocurrion un error por favor intentar mas tarde', 'dev' => $sr->_conn->error, 'sql' => $sr->getLastQuery()));
-				}
-			} else {
-				error_log('LQ' . $sr->getLastQuery());
-				$sr->assignFromArrayExcluding($serv_rec['servicio_recurso'], 'tiempo_creacion', 'id');
-
-				if (!$sr->insertDb()) {
-					DBTable::rollback();
-					return $this->sendStatus(404)->json(array('error' => 'Ocurrion un error por favor intentar mas tarde', 'dev' => $sr->_conn->error, 'sql' => $sr->getLastQuery()));
-				}
-			}
-
-			$servicios_recurso[] = array('servicio_recurso' => $sr->toArray());
+		catch(Exception $e)
+		{
+			DBTable::rollback();
+			return $this->sendStatus( 500 )->json(array("error"=>$e->getMessage()));
 		}
-
-		DBTable::commit();
-		return $this->sendStatus(200)->json(array('servicio' => $servicio->toArray(), 'servicios_recurso' => $servicios_recurso));
 	}
 
-	function getRecursos($ids)
+
+
+
+	function batchInsert($array)
 	{
-		$sql_secundarios 	= 'SELECT ' . servicio::getUniqSelect() . ',' . servicio_recurso::getUniqSelect() . '
-			FROM servicio_recurso
-			JOIN servicio ON servicio_recurso.id_servicio_secundario = servicio.id
-				WHERE servicio_recurso.id_servicio_primario IN(' . DBTable::escapeArrayValues($ids) . ')';
+		$cotizacion_props = cotizacion::getAllPropertiesExcept('id','fecha_creacion','fecha_actualizacion');
+		$cotizacion_detalle_props = cotizacion_detalle::getAllPropertiesExcept('id','cotizacion_id','fecha_creacion','fecha_actualizacion');
 
-		//echo $sql_secundarios;
+		$result = array();
+		foreach($array as $cotizacion_info )
+		{
+			$cotizacion = new cotizacion();
+			$cotizacion->assignFromArray( $cotizacion_info['cotizacion'], $cotizacion_props );
 
-		$res = DBTable::query($sql_secundarios);
-		$row_info = DBTable::getFieldsInfo($res);
+			$cotizacion_detalle_array = ArrayUtils::getItemsProperty($cotizacion_info['cotizacion_detalles'],'cotizacion_detalle');
+			$this->debug('cotizacion_detalle_array',$cotizacion_detalle_array );
 
-		$servicios_recurso = array();
+			if( empty( $cotizacion_detalle_array) )
+				throw  new ValidationException('por favor agregar al menos 1 detalle');
 
-		while ($data = $res->fetch_assoc()) {
-			$row		= DBTable::getRowWithDataTypes($data, $row_info);
-			$servicio_recurso	= servicio_recurso::createFromUniqArray($row);
-			$s_servicio	= servicio::createFromUniqArray($row);
+			if( !$cotizacion->insertDb() )
+			{
+				throw new SystemException('Ocurrio un error por favor intente de nuevo'.$cotizacion->getError() );
+			}
 
-			if (!isset($recursos[$servicio_recurso->id_servicio_primario]))
-				$recursos[$servicio_recurso->id_servicio_primario] = array();
-
-			$recursos[$servicio_recurso->id_servicio_primario][]	= array(
-				"servicio_recurso"	=> $servicio_recurso->toArray(), "servicio" => $s_servicio->toArray()
-			);
+			foreach($cotizacion_detalle_array  as $cd )
+			{
+				$cotizacion_detalle = new cotizacion_detalle();
+				$cotizacion_detalle->assignFromArray( $cd, $cotizacion_detalle_props );
+				$cotizacion_detalle->id_cotizacion = $cotizacion->id;
+				// $cotizacion_detalle->id_servicio = $
+				if(!$cotizacion_detalle->insertDb())
+				{
+					throw new SystemException('Ocurrio un error por favor intente de nuevo'.$cotizacion_detalle->getError() );
+				}
+			}
+			$result[] = $cotizacion->toArray();
 		}
 
-		return $servicios_recurso;
+		return $result;
+	}
+
+	function batchUpdate($array)
+	{
+		$cotizacion_props = cotizacion::getAllPropertiesExcept('id','fecha_creacion','fecha_actualizacion');
+		$cotizacion_detalle_props = cotizacion_detalle::getAllPropertiesExcept('id','fecha_creacion','fecha_actualizacion');
+		$this->debug('sede',$cotizacion_props);
+
+		$result = array();
+		foreach($array as $cotizacion_info )
+		{
+
+			if( empty( $cotizacion_info['cotizacion']['id']) )
+			{
+				throw new ValidationException('El id no puede estar vacio');
+			}
+			$cotizacion = cotizacion::get( $cotizacion_info['cotizacion']['id'] );
+
+			if( $cotizacion->estado_de_compra !== 'PENDIENTE' )
+				throw new ValidationException('La cotizacion ya tiene una orden de compra en camino');
+
+			$cotizacion->assignFromArray( $cotizacion_info['cotizacion'], $cotizacion_props );
+
+			$cotizacion_detalle_array = ArrayUtils::getItemsProperty($cotizacion_info['cotizacion_detalles'],'cotizacion_detalle');
+
+			if( empty( $cotizacion_detalle_array) )
+				throw  new ValidationException('Por favor agregar al menos 1 item');
+
+			if( !$cotizacion->update($cotizacion_props) )
+			{
+				throw new SystemException('Ocurrio un error por favor intente de nuevo'.$cotizacion->getError() );
+			}
+
+
+			$cotizacion_detalle_ids = array();
+
+			$sql = 'DELETE FROM cotizacion_detalle WHERE id_cotizacion = "'.DBTable::escape( $cotizacion->id ).'"';
+			//error_log( $sql );
+			DBTable::query( $sql );
+
+			foreach($cotizacion_detalle_array  as $cd )
+			{
+				$cotizacion_detalle = new cotizacion_detalle();
+				$cotizacion_detalle->assignFromArray( $cd, $cotizacion_detalle_props );
+				// $cotizacion_detale->id_cotizacion = $cotizacion->id;
+				$this->debug('cd',$cotizacion_detalle);
+
+				if(!$cotizacion_detalle->insertDb())
+				{
+					throw new SystemException('Ocurrio un error por favor intente de nuevo'.$cotizacion_detalle->getError() );
+				}
+			}
+
+			$result[] = $cotizacion->toArray();
+		}
+
+		return $result;
 	}
 }
-
 $l = new Service();
 $l->execute();
