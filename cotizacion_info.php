@@ -29,11 +29,12 @@ class Service extends SuperRest
 		$cotizacion_ids 	= ArrayUtils::getItemsProperty($cotizacion_array,'id', true);
 		// $cotizacion_detalle_array	= cotizacion_detalle::searchGroupByIndex(array('id_cotizacion'=>$cotizacion_ids),false,'id_cotizacion');
 		$cotizacion_detalles_array	= cotizacion_detalle::search(array('id_cotizacion'=>$cotizacion_ids),false,'id');
+		// 
 		$servicios_ids = ArrayUtils::getItemsProperty($cotizacion_detalles_array,'id_servicio',true);
 		$servicios_array = servicio::search(array('id'=>$servicios_ids),false,'id');
 		$servicio_array = arrayUtils::groupByIndex($servicios_array,'id');
 		$cotizacion_detalle_array = arrayUtils::groupByIndex($cotizacion_detalles_array,'id_cotizacion');
-		error_log(print_r($servicios_array,true));
+		// error_log(print_r($servicios_array,true));
 		// error_log(print_r($cotizacion_detalle_array,true));
 		// error_log(print_r($cotizacion_detalles_array,true));
 
@@ -148,7 +149,7 @@ class Service extends SuperRest
 	function batchInsert($array)
 	{
 		$cotizacion_props = cotizacion::getAllPropertiesExcept('id','fecha_creacion','fecha_actualizacion');
-		$cotizacion_detalle_props = cotizacion_detalle::getAllPropertiesExcept('id','cotizacion_id','fecha_creacion','fecha_actualizacion');
+		$cotizacion_detalle_props = cotizacion_detalle::getAllPropertiesExcept('id','id_cotizacion','fecha_creacion','fecha_actualizacion');
 
 		$result = array();
 		foreach($array as $cotizacion_info )
