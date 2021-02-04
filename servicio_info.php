@@ -152,11 +152,10 @@ class Service extends SuperRest
 		$result = array();
 		foreach($array as $servicio_info )
 		{
-			$servicio = new servicio_recurso();
+			$servicio = new servicio();
 			$servicio->assignFromArray( $servicio_info['servicio'], $servicio_props );
-
-			$servicio_recurso_array = ArrayUtils::getItemsProperty($servicio_info['recursos'],'recurso');
-			$this->debug('servicio_recurso_array',$servicio_recurso_array );
+	
+			$this->debug('servicio',$servicio_info['servicio'] );
 
 			// if( empty( $servicio_recurso_array) )
 			// 	throw  new ValidationException('por favor agregar al menos 1 detalle');
@@ -166,6 +165,8 @@ class Service extends SuperRest
 				throw new SystemException('Ocurrio un error por favor intente de nuevo'.$servicio->getError() );
 			}
 
+	
+			$servicio_recurso_array = ArrayUtils::getItemsProperty($servicio_info['servicio_detalles'],'servicio_detalle');
 			foreach($servicio_recurso_array  as $servicio_recurso )
 			{
 				$servicio_recurso = new servicio_recurso();
