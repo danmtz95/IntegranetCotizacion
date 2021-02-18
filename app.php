@@ -70,8 +70,8 @@ class App
                 $__host          = '127.0.0.1';
                 $__port          = '3306';
 
-				app::$image_directory = '/var/www/html/Integranet_Cotizacion/api/user_images';
-				app::$attachment_directory = '/var/www/html/Integranet_Cotizacion/api/user_files';
+				app::$image_directory = '/var/www/html/CotizacionManager/api/user_images';
+				app::$attachment_directory = '/var/www/html/CotizacionManager/api/user_files';
 		}
 
 		$mysqli = new \mysqli($__host, $__user, $__password, $__db, $__port );
