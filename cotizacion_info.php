@@ -227,7 +227,9 @@ class Service extends SuperRest
 			{
 				$cotizacion_detalle = new cotizacion_detalle();
 				$cotizacion_detalle->assignFromArray( $cd, $cotizacion_detalle_props );
-				// $cotizacion_detale->id_cotizacion = $cotizacion->id;
+				// if($cotizacion->id){
+					$cotizacion_detalle->id_cotizacion = $cotizacion->id;
+				// }
 				$this->debug('cd',$cotizacion_detalle);
 
 				if(!$cotizacion_detalle->insertDb())

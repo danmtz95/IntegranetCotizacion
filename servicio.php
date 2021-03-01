@@ -17,35 +17,40 @@ class Service extends SuperRest
 {
 	function get()
 	{
+		// session_start();
+		// App::connect();
+		// $this->setAllowHeader();
+
+		// if( isset( $_GET['id'] ) && !empty( $_GET['id'] ) )
+		// {
+		// 	$servicio = servicio::get( $_GET['id']  );
+
+		// 	if( $servicio )
+		// 	{
+		// 		return $this->sendStatus( 200 )->json( $servicio->toArray() );
+		// 	}
+		// 	return $this->sendStatus( 404 )->json(array('error'=>'The element wasn\'t found'));
+		// }
+
+
+		// $constraints = $this->getAllConstraints( servicio::getAllProperties() );
+
+		// $constraints_str = count( $constraints ) > 0 ? join(' AND ',$constraints ) : '1';
+		// $pagination	= $this->getPagination();
+
+		// $sql_usuarios	= 'SELECT SQL_CALC_FOUND_ROWS servicio.*
+		// 	FROM `servicio`
+		// 	WHERE '.$constraints_str.'
+		// 	LIMIT '.$pagination->limit.'
+		// 	OFFSET '.$pagination->offset;
+		// $info	= DBTable::getArrayFromQuery( $sql_usuarios );
+		// $total	= DBTable::getTotalRows();
+		// return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
 		session_start();
 		App::connect();
 		$this->setAllowHeader();
 
-		if( isset( $_GET['id'] ) && !empty( $_GET['id'] ) )
-		{
-			$servicio = servicio::get( $_GET['id']  );
-
-			if( $servicio )
-			{
-				return $this->sendStatus( 200 )->json( $servicio->toArray() );
-			}
-			return $this->sendStatus( 404 )->json(array('error'=>'The element wasn\'t found'));
-		}
-
-
-		$constraints = $this->getAllConstraints( servicio::getAllProperties() );
-
-		$constraints_str = count( $constraints ) > 0 ? join(' AND ',$constraints ) : '1';
-		$pagination	= $this->getPagination();
-
-		$sql_usuarios	= 'SELECT SQL_CALC_FOUND_ROWS servicio.*
-			FROM `servicio`
-			WHERE '.$constraints_str.'
-			LIMIT '.$pagination->limit.'
-			OFFSET '.$pagination->offset;
-		$info	= DBTable::getArrayFromQuery( $sql_usuarios );
-		$total	= DBTable::getTotalRows();
-		return $this->sendStatus( 200 )->json(array("total"=>$total,"data"=>$info));
+		return $this->genericGet("servicio");
 	}
 	function post()
 	{
